@@ -40,7 +40,6 @@
             height: 100%;  
             border-radius: 9999px;  
             width: 0%;  
-            /* Se quita la transición para que el arrastre sea instantáneo */
         }
 
         /* --- Nuevos estilos para la barra de volumen personalizada --- */
@@ -70,6 +69,11 @@
             background-color: white;
             border-radius: 50%;
             box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            opacity: 0; /* Inicia oculto */
+            transition: opacity 0.2s ease-in-out;
+        }
+        .volume-bar-container:hover .volume-bar::after {
+            opacity: 1; /* Se muestra al hacer hover sobre el contenedor */
         }
         
         /* Efecto de cristal esmerilado para el reproductor */
@@ -146,6 +150,26 @@
         /* Margen superior para el botón cuando está en la vista móvil */
         #right-column > #upload-wrapper {
              margin-top: 1.5rem; /* 24px */
+        }
+        
+        /* --- MEJORA: ESTILOS PARA EL BOTÓN DE ELIMINAR --- */
+        .delete-button {
+            opacity: 0; /* Oculto por defecto en dispositivos con mouse */
+            transition: opacity 0.2s ease-in-out;
+            padding: 4px; /* Área de toque más grande */
+            flex-shrink: 0; /* Evita que el botón se encoja */
+        }
+
+        /* Muestra el botón al pasar el mouse sobre el elemento de la lista */
+        .playlist-item:hover .delete-button {
+            opacity: 1;
+        }
+
+        /* Para dispositivos táctiles (sin hover), haz el botón visible por defecto */
+        @media (hover: none) {
+            .delete-button {
+                opacity: 0.7; /* Ligeramente transparente para no ser tan agresivo */
+            }
         }
     </style>
 </head>
@@ -323,11 +347,13 @@
 
                 const setArt = (isCustom) => { isDefaultArt = !isCustom; };
 
-                // Utiliza la información de metadatos ya almacenada en el objeto de la pista
                 trackTitleEl.textContent = track.title;
                 trackArtistEl.textContent = track.artist;
 
-                if (track.picture) {
+                if (track.videoThumbnailUrl) {
+                    setArt(true);
+                    albumArtEl.src = track.videoThumbnailUrl;
+                } else if (track.picture) {
                     setArt(true);
                     let base64String = "";
                     for (let i = 0; i < track.picture.data.length; i++) {
@@ -336,23 +362,22 @@
                     albumArtEl.src = `data:${track.picture.format};base64,${window.btoa(base64String)}`;
                 } else {
                     setArt(false);
-                    // Establece una carátula por defecto según el tipo de archivo
                     if (track.type.startsWith('video/')) {
-                        albumArtEl.src = 'https://placehold.co/500x500/1f2937/7ca3f2?text=Audio+de+Video';
+                        albumArtEl.src = 'https://placehold.co/500x500/1f2937/7ca3f2?text=Video';
                     } else {
                         albumArtEl.src = 'https://placehold.co/500x500/1f2937/7ca3f2?text=Sin+Car%C3%A1tula';
                     }
                 }
                 
                 adjustTitleFontSize();
-                updatePlaylistUI(); // Asegura que la lista se actualice
+                updatePlaylistUI();
             };
             
             const updateDynamicColors = () => {
                 if (isDefaultArt) {
-                    document.body.style.backgroundColor = '#111827'; // Gris oscuro por defecto
+                    document.body.style.backgroundColor = '#111827';
                     playerContainer.classList.remove('light-theme');
-                    uploadButton.style.backgroundColor = '#4f46e5'; // Indigo por defecto
+                    uploadButton.style.backgroundColor = '#4f46e5';
                     uploadButton.style.color = '#ffffff';
                     return;
                 }
@@ -369,7 +394,7 @@
                 } catch (e) {
                     console.error("Error con ColorThief: ", e);
                     isDefaultArt = true;
-                    updateDynamicColors(); // Vuelve a los colores por defecto si hay error
+                    updateDynamicColors();
                 }
             };
             albumArtEl.addEventListener('load', updateDynamicColors);
@@ -395,7 +420,7 @@
                     isPlaying = true;
                     playIcon.classList.add('hidden');
                     pauseIcon.classList.remove('hidden');
-                    updatePlaylistUI(); // MEJORA: Actualiza la UI para mostrar el ícono
+                    updatePlaylistUI();
                 }).catch(error => console.error("Error al reproducir:", error));
             };
 
@@ -404,7 +429,7 @@
                 isPlaying = false;
                 playIcon.classList.remove('hidden');
                 pauseIcon.classList.add('hidden');
-                updatePlaylistUI(); // MEJORA: Actualiza la UI para ocultar el ícono
+                updatePlaylistUI();
             };
             
             const togglePlayPause = () => {
@@ -439,10 +464,8 @@
 
             const playPrev = () => {
                 if (playlist.length === 0) return;
-                // Si la canción ha avanzado más de 3 segundos, reiníciala. Si no, ve a la anterior.
                 if (audioPlayer.currentTime > 3 && !prevClickTimeout) {
                     audioPlayer.currentTime = 0;
-                    // Lógica de doble clic para ir atrás
                     prevClickTimeout = setTimeout(() => { prevClickTimeout = null; }, 500);
                     return;
                 }
@@ -450,11 +473,10 @@
                     clearTimeout(prevClickTimeout);
                     prevClickTimeout = null;
                 }
-                // Usa el historial para volver a la canción anterior
                 if (playHistory.length > 1) {
-                    playHistory.pop(); // Quita la actual
+                    playHistory.pop(); 
                     const previousTrackIndex = playHistory[playHistory.length - 1];
-                    loadTrack(previousTrackIndex, false); // No actualices el historial
+                    loadTrack(previousTrackIndex, false);
                 } else {
                     let newIndex = currentTrackIndex - 1;
                     if (newIndex < 0) { newIndex = playlist.length - 1; }
@@ -575,7 +597,6 @@
                 }
             });
 
-            // Eventos de arrastre y finalización en todo el documento
             document.addEventListener('mousemove', (e) => {
                 if (isDraggingProgress) { updateProgress(e); }
                 if (isDraggingVolume) { handleVolumeChange(e); }
@@ -613,7 +634,7 @@
                 playHistory = currentTrackIndex !== -1 ? [currentTrackIndex] : [];
             });
 
-            // --- LÓGICA DE CARGA DE ARCHIVOS (OPTIMIZADA) ---
+            // --- LÓGICA DE CARGA DE ARCHIVOS ---
             uploadButton.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', (e) => {
                 const files = e.target.files;
@@ -621,9 +642,8 @@
 
                 const wasPlayerEmpty = playlist.length === 0;
 
-                // Crea promesas para leer los metadatos de cada archivo nuevo
                 const newTracksPromises = Array.from(files)
-                    .filter(file => !playlist.some(track => track.name === file.name && track.file.size === file.size)) // Evita duplicados
+                    .filter(file => !playlist.some(track => track.name === file.name && track.file.size === file.size))
                     .map(file => {
                         return new Promise((resolve) => {
                             const track = {
@@ -631,34 +651,55 @@
                                 url: URL.createObjectURL(file),
                                 name: file.name,
                                 type: file.type || 'unknown',
-                                title: file.name.replace(/\.[^/.]+$/, ""), // Título por defecto
-                                artist: "Artista Desconocido", // Artista por defecto
-                                picture: null
+                                title: file.name.replace(/\.[^/.]+$/, ""),
+                                artist: "Artista Desconocido",
+                                picture: null,
+                                videoThumbnailUrl: null
                             };
 
                             if (file.type.startsWith('audio/')) {
                                 window.jsmediatags.read(file, {
                                     onSuccess: (tag) => {
-                                        track.title = tag.tags.title || track.title; // Usa el título del tag o el nombre del archivo
+                                        track.title = tag.tags.title || track.title;
                                         track.artist = tag.tags.artist || track.artist;
                                         track.picture = tag.tags.picture;
                                         resolve(track);
                                     },
                                     onError: (error) => {
-                                        console.error('Error al leer metadatos:', error);
-                                        resolve(track); // Resuelve con la info por defecto si hay error
+                                        resolve(track);
                                     }
                                 });
                             } else if (file.type.startsWith('video/')) {
                                 track.artist = "Audio de Video";
-                                resolve(track);
+                                const video = document.createElement('video');
+                                const canvas = document.createElement('canvas');
+                                const ctx = canvas.getContext('2d');
+                                
+                                video.src = track.url;
+                                video.muted = true;
+
+                                video.onloadedmetadata = () => {
+                                    video.currentTime = video.duration * 0.1;
+                                };
+
+                                video.onseeked = () => {
+                                    canvas.width = video.videoWidth;
+                                    canvas.height = video.videoHeight;
+                                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                                    track.videoThumbnailUrl = canvas.toDataURL('image/jpeg');
+                                    resolve(track); 
+                                };
+
+                                video.onerror = () => {
+                                    console.error("No se pudo cargar el video para extraer la carátula.");
+                                    resolve(track);
+                                };
                             } else {
                                 resolve(track);
                             }
                         });
                     });
 
-                // Cuando todas las promesas se resuelvan, añade las pistas a la playlist
                 Promise.all(newTracksPromises).then(newTracks => {
                     playlist.push(...newTracks);
                     updatePlaylistUI();
@@ -667,10 +708,52 @@
                     }
                 });
 
-                fileInput.value = ''; // Limpia el input para poder cargar los mismos archivos de nuevo
+                fileInput.value = '';
             });
             
-            // --- ACTUALIZACIÓN DE LA UI DE LA LISTA DE REPRODUCCIÓN ---
+            // --- NUEVA FUNCIÓN: ELIMINAR CANCIÓN ---
+            const removeTrack = (indexToRemove) => {
+                // Revocar el Object URL para liberar memoria
+                URL.revokeObjectURL(playlist[indexToRemove].url);
+
+                const wasPlaying = (indexToRemove === currentTrackIndex);
+                
+                // Eliminar la canción del array de la lista de reproducción
+                playlist.splice(indexToRemove, 1);
+                
+                // Actualizar el historial de reproducción
+                playHistory = playHistory
+                    .map(i => (i > indexToRemove ? i - 1 : i))
+                    .filter(i => i !== indexToRemove);
+
+                if (playlist.length === 0) {
+                    // Si la lista está vacía, reiniciar el reproductor
+                    pauseMedia();
+                    audioPlayer.src = '';
+                    currentTrackIndex = -1;
+                    trackTitleEl.textContent = 'Título';
+                    trackArtistEl.textContent = 'Artista';
+                    albumArtEl.src = 'https://i.imgur.com/HUhIujV.jpeg';
+                    isDefaultArt = true;
+                    updateDynamicColors();
+                    playHistory = [];
+                    progressBar.style.width = '0%';
+                    currentTimeEl.textContent = '0:00';
+                    durationEl.textContent = '0:00';
+                } else if (wasPlaying) {
+                    // Si se eliminó la canción actual, reproducir la siguiente
+                    const newIndex = indexToRemove % playlist.length;
+                    loadTrack(newIndex);
+                } else if (indexToRemove < currentTrackIndex) {
+                    // Si se eliminó una canción anterior a la actual, ajustar el índice
+                    currentTrackIndex--;
+                }
+
+                // Actualizar la interfaz de la lista de reproducción
+                updatePlaylistUI();
+            };
+            
+            // --- ACTUALIZACIÓN DE LA UI DE LA LISTA DE REPRODUCCIÓN (MODIFICADA) ---
             const updatePlaylistUI = () => {
                 playlistEl.innerHTML = '';
                 if (playlist.length === 0) {
@@ -679,29 +762,47 @@
                 }
                 playlist.forEach((track, index) => {
                     const li = document.createElement('li');
-                    li.className = 'py-1 px-2 rounded-md cursor-pointer hover:bg-white/20 transition playlist-item truncate flex items-center justify-between';
-                    
+                    li.className = 'py-1 px-2 rounded-md cursor-pointer hover:bg-white/20 transition playlist-item flex items-center justify-between gap-2';
+                    li.dataset.index = index;
+
                     const trackNameSpan = document.createElement('span');
-                    // *** MEJORA: Muestra el título de la canción en lugar del nombre del archivo ***
                     trackNameSpan.textContent = track.title; 
+                    trackNameSpan.className = 'truncate flex-grow';
                     li.appendChild(trackNameSpan);
 
-                    // MEJORA: Añade el ícono de reproducción si la canción está sonando
+                    const iconsContainer = document.createElement('div');
+                    iconsContainer.className = 'flex items-center flex-shrink-0 gap-2';
+
+                    // Añade el ícono de reproducción si la canción está sonando
                     if (index === currentTrackIndex && isPlaying) {
                         const playingIcon = document.createElement('div');
-                        playingIcon.className = 'flex items-center space-x-px';
+                        playingIcon.className = 'flex items-center';
                         for (let i = 0; i < 4; i++) {
                             const bar = document.createElement('span');
                             bar.className = 'playing-icon-bar';
                             playingIcon.appendChild(bar);
                         }
-                        li.appendChild(playingIcon);
+                        iconsContainer.appendChild(playingIcon);
                     }
-
+                    
+                    // --- MEJORA: Crear y añadir el botón de eliminar ---
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'delete-button text-gray-400 hover:text-white transition-colors';
+                    deleteButton.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd"></path></svg>`;
+                    deleteButton.title = "Eliminar de la lista";
+                    
+                    deleteButton.addEventListener('click', (e) => {
+                        e.stopPropagation(); // Evita que se reproduzca la canción al hacer clic en el botón
+                        removeTrack(index);
+                    });
+                    
+                    iconsContainer.appendChild(deleteButton);
+                    li.appendChild(iconsContainer);
+                    
                     if (index === currentTrackIndex) { 
                         li.classList.add('active'); 
                     }
-                    li.dataset.index = index;
+                    
                     li.addEventListener('click', () => { 
                         if (currentTrackIndex === index) {
                             togglePlayPause();
@@ -711,6 +812,7 @@
                     });
                     playlistEl.appendChild(li);
                 });
+                
                 const activeItem = playlistEl.querySelector('.active');
                 if (activeItem) {
                     activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -718,11 +820,9 @@
             };
             
             const handleResponsiveLayout = () => {
-                if (window.innerWidth < 768) { // md breakpoint in Tailwind
-                    // Mueve el botón de carga a la columna derecha en móviles
+                if (window.innerWidth < 768) { 
                     if (uploadWrapper.parentElement !== rightColumn) { rightColumn.appendChild(uploadWrapper); }
                 } else {
-                    // Mueve el botón de carga a la columna izquierda en escritorio
                     if (uploadWrapper.parentElement !== leftColumn) { leftColumn.appendChild(uploadWrapper); }
                 }
                 if (currentTrackIndex !== -1) { adjustTitleFontSize(); }
