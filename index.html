@@ -28,85 +28,100 @@
             -webkit-user-select: none;
         }
 
-        /* --- Estilos para barras personalizadas (Progreso y Volumen) --- */
-        .progress-bar-container {  
-            height: 6px;  
-            background-color: rgba(255, 255, 255, 0.2);  
-            border-radius: 9999px;  
-            cursor: pointer;  
+        /* * --- NUEVO: Sistema de Tema Dinámico con Variables CSS ---
+         * Estas variables se actualizan con JavaScript para adaptar los colores
+         * del reproductor al color de la carátula, asegurando siempre un buen contraste.
+        */
+        #player-container {
+            /* Colores por defecto (Tema Oscuro) */
+            --primary-text: #ffffff;
+            --secondary-text: #9ca3af; /* gray-400 */
+            --icon-color: #9ca3af;
+            --icon-hover-color: #ffffff;
+            --icon-active-color: #ffffff;
+            --progress-bg: rgba(255, 255, 255, 0.2);
+            --progress-fill: #ffffff;
+            --volume-thumb-color: #ffffff;
+            --play-button-bg: #ffffff;
+            --play-button-icon: #1f2937; /* gray-800 */
+            --playlist-active-bg: rgba(255, 255, 255, 0.2);
+            --delete-icon-hover-bg: rgba(255, 255, 255, 0.3);
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+
+            /* Aplicación de las variables y transiciones */
+            color: var(--primary-text);
+            background-color: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease;
         }
-        .progress-bar {  
-            background-color: #ffffff;  
-            height: 100%;  
-            border-radius: 9999px;  
-            width: 0%;  
-            /* Se quita la transición para que el arrastre sea instantáneo */
+        
+        /* Aplicación de variables a elementos específicos */
+        #track-title, #track-artist, .text-lg, .text-gray-400, .control-button, .playlist-item {
+            transition: color 0.5s ease;
+        }
+        #track-artist, .time-display { color: var(--secondary-text); }
+        .control-button { color: var(--icon-color); }
+        .control-button:hover { color: var(--icon-hover-color); }
+        .control-button.active { color: var(--icon-active-color); }
+        
+        #play-pause-button {
+            background-color: var(--play-button-bg);
+            color: var(--play-button-icon);
+            transition: background-color 0.5s ease, color 0.5s ease, transform 0.2s ease;
         }
 
-        /* --- Nuevos estilos para la barra de volumen personalizada --- */
-        .volume-bar-container {
+        /* Barras de progreso y volumen */
+        .progress-bar-container, .volume-bar-container { 
+            background-color: var(--progress-bg); 
+            transition: background-color 0.5s ease;
             height: 6px;
-            background-color: rgba(255, 255, 255, 0.2);
             border-radius: 9999px;
             cursor: pointer;
-            width: 100%;
         }
-        .volume-bar {
-            background-color: #ffffff;
+        .progress-bar, .volume-bar {
+            background-color: var(--progress-fill);
+            transition: background-color 0.5s ease;
             height: 100%;
             border-radius: 9999px;
-            width: 100%; /* Inicia al 100% */
-            position: relative;
+            width: 0%;
         }
-        /* Pequeño círculo al final de la barra para simular el "thumb" */
+        .volume-bar { position: relative; width: 100%; }
         .volume-bar::after {
             content: '';
             position: absolute;
-            right: -8px; /* Centra el círculo al final de la barra */
+            right: -8px; 
             top: 50%;
             transform: translateY(-50%);
             width: 13px;
             height: 13px;
-            background-color: white;
+            background-color: var(--volume-thumb-color);
             border-radius: 50%;
             box-shadow: 0 0 5px rgba(0,0,0,0.3);
-
-            transition: opacity 0.2s ease-in-out;
+            transition: background-color 0.5s ease, opacity 0.2s ease-in-out;
         }
+        .volume-bar-container { width: 100%; }
 
-        
-        /* Efecto de cristal esmerilado para el reproductor */
-        #player-container {  
-            background-color: rgba(255, 255, 255, 0.1);  
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        /* Estilos de la lista de reproducción */
+        /* Lista de reproducción */
         .playlist-container { scroll-behavior: smooth; }
-        .playlist-item.active { background-color: rgba(255, 255, 255, 0.2); font-weight: 700; }
-        
-        /* --- NUEVO: Estilo para el icono de eliminar --- */
+        .playlist-item.active { 
+            background-color: var(--playlist-active-bg); 
+            font-weight: 700; 
+            transition: background-color 0.5s ease;
+        }
         .delete-icon {
-            display: none; /* Oculto por defecto */
-            margin-left: auto; /* Empuja el icono a la derecha */
+            display: none; 
+            margin-left: auto;
             padding: 4px;
             border-radius: 50%;
             transition: background-color 0.2s;
         }
-        .delete-icon:hover {
-            background-color: rgba(255, 255, 255, 0.3);
-        }
-        /* Muestra el icono al pasar el mouse sobre el elemento de la lista o cuando está "forzado" por JS */
+        .delete-icon:hover { background-color: var(--delete-icon-hover-bg); }
         .playlist-item:hover .delete-icon, .playlist-item.force-show .delete-icon {
             display: block;
         }
-        
-        /* Estilos para botones de control */
-        .control-button { color: #9ca3af; /* gray-400 */ }
-        .control-button:hover { color: #ffffff; }
-        .control-button.active { color: #ffffff; /* blanco para estado activo */ }
         
         /* Oculta la barra de scroll pero mantiene la funcionalidad */
         .playlist-container {
@@ -114,17 +129,16 @@
             scrollbar-width: none;  /* Firefox */
         }
         .playlist-container::-webkit-scrollbar {
-            display: none; /* Chrome, Safari, Opera y otros basados en Webkit */
+            display: none; /* Chrome, Safari, Opera */
         }
 
-        /* --- Estilos para que el título no se corte y se ajuste con JS --- */
         #track-title {
-            white-space: nowrap; /* Evita que el texto se divida en varias líneas */
-            overflow: hidden; /* Oculta el texto que desborda */
+            white-space: nowrap; 
+            overflow: hidden;
             line-height: 1.2;
         }
         
-        /* MEJORA: Estilos para el ícono de "reproduciendo" */
+        /* Ícono de "reproduciendo" animado */
         @keyframes bounce {
             0%, 100% { transform: scaleY(0.4); }
             20% { transform: scaleY(1.0); }
@@ -141,21 +155,8 @@
         }
         .playing-icon-bar:nth-child(2) { animation-delay: -1.0s; }
         .playing-icon-bar:nth-child(3) { animation-delay: -0.8s; }
-        .playing-icon-bar:nth-child(4) { animation-delay: -0.6s; }
         
-        /* --- ESTILOS PARA TEMA CLARO (ADAPTATIVO) --- */
-        #player-container.light-theme, #player-container.light-theme #track-title, #player-container.light-theme .text-lg { color: #1f2937; }
-        #player-container.light-theme .text-gray-400 { color: #4b5563; }
-        #player-container.light-theme .control-button { color: #4b5563; }
-        #player-container.light-theme .control-button.active, #player-container.light-theme .control-button:hover { color: #111827; }
-        #player-container.light-theme .progress-bar-container, #player-container.light-theme .volume-bar-container { background-color: rgba(0,0,0,0.1); }
-        #player-container.light-theme .progress-bar, #player-container.light-theme .volume-bar { background-color: #1f2937; }
-        #player-container.light-theme .volume-bar::after { background-color: #1f2937; }
-        #player-container.light-theme #play-pause-button { background-color: #1f2937; color: #ffffff; }
-        #player-container.light-theme .playlist-item.active { background-color: rgba(0,0,0,0.1); }
-        #player-container.light-theme .delete-icon:hover { background-color: rgba(0,0,0,0.2); }
-
-        /* Estilos para el botón de carga con sombra y transición */
+        /* Estilos para el botón de carga */
         #upload-button {
             transition: background-color 0.8s ease-in-out, color 0.8s ease-in-out, transform 0.2s ease, box-shadow 0.3s ease;
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1), 0 3px 6px rgba(0, 0, 0, 0.15);
@@ -163,10 +164,7 @@
         #upload-button:hover {
             box-shadow: 0 14px 28px rgba(0,0,0,0.2), 0 10px 10px rgba(0,0,0,0.18);
         }
-        /* Margen superior para el botón cuando está en la vista móvil */
-        #right-column > #upload-wrapper {
-             margin-top: 1.5rem; /* 24px */
-        }
+        #right-column > #upload-wrapper { margin-top: 1.5rem; }
     </style>
 </head>
 <body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
@@ -174,13 +172,11 @@
     <div id="player-container" class="w-full max-w-4xl mx-auto rounded-2xl shadow-2xl overflow-hidden">
         <div class="flex flex-col md:flex-row md:items-start">
             
-            <!-- Columna Izquierda: Carátula y (en escritorio) Botón de Carga -->
+            <!-- Columna Izquierda: Carátula y Botón de Carga (en escritorio) -->
             <div id="left-column" class="md:w-1/2 lg:w-2/5 p-6 md:p-8 flex flex-col items-center">
                 <div class="w-full aspect-square bg-gray-700 rounded-lg shadow-lg flex items-center justify-center overflow-hidden">
-                    <!-- MEJORA: Se añade oncontextmenu y ondragstart para bloquear clic derecho y arrastre -->
                     <img id="album-art" src="https://i.imgur.com/HUhIujV.jpeg" crossorigin="anonymous" class="w-full h-full object-cover" oncontextmenu="return false;" ondragstart="return false;">
                 </div>
-                <!-- El wrapper del botón se moverá con JS. Comienza aquí para el diseño de escritorio. -->
                 <div id="upload-wrapper" class="w-full mt-6">
                     <button id="upload-button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-full transition-transform transform hover:scale-105 w-full">
                         Cargar Archivos
@@ -191,10 +187,9 @@
 
             <!-- Columna Derecha: Controles y Lista de Reproducción -->
             <div id="right-column" class="md:w-1/2 lg:w-3/5 py-4 px-6 md:p-8 flex flex-col">
-                <!-- Contenedor con altura fija (h-24) para que no se estire. -->
                 <div class="text-center md:text-left mb-4 h-24 flex flex-col justify-center">
                     <h2 id="track-title" class="text-3xl font-bold">Título</h2>
-                    <p id="track-artist" class="text-lg text-gray-400">Artista</p>
+                    <p id="track-artist" class="text-lg">Artista</p>
                 </div>
                 
                 <div class="mt-4">
@@ -203,7 +198,7 @@
                         <div id="progress-container" class="progress-bar-container">
                             <div id="progress-bar" class="progress-bar"></div>
                         </div>
-                        <div class="flex justify-between text-xs text-gray-400 mt-1">
+                        <div class="flex justify-between text-xs mt-1 time-display">
                             <span id="current-time">0:00</span>
                             <span id="duration">0:00</span>
                         </div>
@@ -211,33 +206,32 @@
 
                     <!-- Controles Principales -->
                     <div class="flex items-center justify-center space-x-6 my-4">
-                        <button id="prev-button" class="text-gray-400 hover:text-white transition">
+                        <button id="prev-button" class="control-button">
                             <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 18V6h2v12H6zm3.5-6L18 6v12l-8.5-6z"/></svg>
                         </button>
-                        <button id="play-pause-button" class="bg-white text-gray-900 rounded-full p-4 transform hover:scale-110 transition shadow-lg">
+                        <button id="play-pause-button" class="rounded-full p-4 transform hover:scale-110 shadow-lg">
                             <svg id="play-icon" class="w-8 h-8" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M8 5.14v14l11-7-11-7Z"/></svg>
                             <svg id="pause-icon" class="w-8 h-8 hidden" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M6 19h4V5H6v14Zm8-14v14h4V5h-4Z"/></svg>
                         </button>
-                        <button id="next-button" class="text-gray-400 hover:text-white transition">
+                        <button id="next-button" class="control-button">
                             <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8 18V6l8.5 6L8 18zm9-12v12h2V6h-2z"/></svg>
                         </button>
                     </div>
 
                     <!-- Controles Secundarios: Volumen, Aleatorio, Repetir -->
                     <div class="flex items-center space-x-4 mt-4">
-                        <button id="shuffle-button" class="transition control-button">
+                        <button id="shuffle-button" class="control-button">
                             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="16 16 21 16 21 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="11" y2="11"></line></svg>
                         </button>
-                        <div id="volume-icon-container" class="transition control-button cursor-pointer">
+                        <div id="volume-icon-container" class="control-button cursor-pointer">
                             <svg id="volume-high" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
                             <svg id="volume-low" class="w-6 h-6 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
                             <svg id="volume-mute" class="w-6 h-6 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
                         </div>
-                        <!-- Barra de volumen personalizada -->
                         <div class="volume-bar-container">
                             <div id="volume-bar" class="volume-bar"></div>
                         </div>
-                        <button id="repeat-button" class="transition control-button">
+                        <button id="repeat-button" class="control-button">
                              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
                         </button>
                     </div>
@@ -256,7 +250,6 @@
         </div>
     </div>
     
-    <!-- El reproductor de audio está oculto. Se usará para TODOS los archivos. -->
     <audio id="audio-player" class="hidden"></audio>
 
     <script>
@@ -294,7 +287,7 @@
             // --- ESTADO DEL REPRODUCTOR ---
             let playlist = [];
             let currentTrackIndex = -1;
-            let playHistory = []; // Historial de reproducción para el modo aleatorio mejorado
+            let playHistory = [];
             let isPlaying = false;
             let isRepeat = false;
             let isShuffle = false;
@@ -302,7 +295,7 @@
             let isDefaultArt = true;
             let isDraggingVolume = false;
             let isDraggingProgress = false;
-            let longPressTimer; 
+            let longPressTimer;
             const longPressDuration = 500;
 
             const colorThief = new ColorThief();
@@ -324,7 +317,7 @@
             const adjustTitleFontSize = () => {
                 const element = trackTitleEl;
                 const container = element.parentElement;
-                element.style.fontSize = '';  
+                element.style.fontSize = ''; 
                 const baseFontSize = parseFloat(window.getComputedStyle(element).fontSize);
                 if (element.scrollWidth > container.clientWidth) {
                     let newFontSize = (container.clientWidth / element.scrollWidth) * baseFontSize;
@@ -378,19 +371,52 @@
             };
             
             const updateDynamicColors = () => {
+                // Función para establecer las variables CSS del tema
+                const settheme = (theme) => {
+                    for (const [key, value] of Object.entries(theme)) {
+                        playerContainer.style.setProperty(key, value);
+                    }
+                };
+                
+                // Definición de los temas
+                const darkTheme = {
+                    '--primary-text': '#ffffff', '--secondary-text': '#9ca3af',
+                    '--icon-color': '#9ca3af', '--icon-hover-color': '#ffffff', '--icon-active-color': '#ffffff',
+                    '--progress-bg': 'rgba(255, 255, 255, 0.2)', '--progress-fill': '#ffffff',
+                    '--volume-thumb-color': '#ffffff', '--play-button-bg': '#ffffff',
+                    '--play-button-icon': '#1f2937', '--playlist-active-bg': 'rgba(255, 255, 255, 0.2)',
+                    '--delete-icon-hover-bg': 'rgba(255, 255, 255, 0.3)', '--glass-bg': 'rgba(255, 255, 255, 0.1)',
+                    '--glass-border': 'rgba(255, 255, 255, 0.2)'
+                };
+
+                const lightTheme = {
+                    '--primary-text': '#1f2937', '--secondary-text': '#4b5563',
+                    '--icon-color': '#4b5563', '--icon-hover-color': '#111827', '--icon-active-color': '#111827',
+                    '--progress-bg': 'rgba(0, 0, 0, 0.1)', '--progress-fill': '#1f2937',
+                    '--volume-thumb-color': '#1f2937', '--play-button-bg': '#1f2937',
+                    '--play-button-icon': '#ffffff', '--playlist-active-bg': 'rgba(0, 0, 0, 0.1)',
+                    '--delete-icon-hover-bg': 'rgba(0, 0, 0, 0.2)', '--glass-bg': 'rgba(255, 255, 255, 0.5)',
+                    '--glass-border': 'rgba(0, 0, 0, 0.1)'
+                };
+                
+                // Lógica de aplicación del tema
                 if (isDefaultArt) {
                     document.body.style.backgroundColor = '#111827';
-                    playerContainer.classList.remove('light-theme');
                     uploadButton.style.backgroundColor = '#4f46e5';
                     uploadButton.style.color = '#ffffff';
+                    settheme(darkTheme);
                     return;
                 }
+
                 if (!albumArtEl.complete || albumArtEl.naturalWidth === 0) return;
                 try {
                     const dominantColor = colorThief.getColor(albumArtEl);
                     document.body.style.backgroundColor = `rgb(${dominantColor[0]}, ${dominantColor[1]}, ${dominantColor[2]})`;
-                    const bodyLuminance = (0.299 * dominantColor[0] + 0.587 * dominantColor[1] + 0.114 * dominantColor[2]) / 255;
-                    playerContainer.classList.toggle('light-theme', bodyLuminance > 0.6);
+                    
+                    // Se usa una luminancia de 0.5 como umbral para decidir entre tema claro y oscuro
+                    const luminance = (0.299 * dominantColor[0] + 0.587 * dominantColor[1] + 0.114 * dominantColor[2]) / 255;
+                    settheme(luminance > 0.5 ? lightTheme : darkTheme);
+                    
                     const palette = colorThief.getPalette(albumArtEl, 5);
                     const buttonColor = palette[1] || dominantColor;
                     uploadButton.style.backgroundColor = `rgb(${buttonColor[0]}, ${buttonColor[1]}, ${buttonColor[2]})`;
@@ -407,7 +433,6 @@
             const loadTrack = (index, updateHistory = true) => {
                 if (index < 0 || index >= playlist.length) return;
 
-                // Actualiza el historial de reproducción solo si es necesario
                 if (updateHistory && isShuffle) {
                     if (playHistory.length === 0 || playHistory[playHistory.length - 1] !== index) {
                         playHistory.push(index);
@@ -451,30 +476,20 @@
                 }
             };
 
-            // MEJORA: Lógica de 'playNext' actualizada para un modo aleatorio inteligente
             const playNext = () => {
                 if (playlist.length === 0) return;
 
                 if (isShuffle) {
-                    if (playlist.length <= 1) {
-                        loadTrack(0);
-                        return;
-                    }
-
-                    // Si todas las canciones ya se han reproducido en este ciclo, reinicia el historial.
+                    if (playlist.length <= 1) { loadTrack(0); return; }
                     if (playHistory.length >= playlist.length) {
-                        playHistory = [currentTrackIndex]; // Mantiene solo la actual para no repetirla.
+                        playHistory = [currentTrackIndex]; 
                     }
-
                     let nextIndex;
-                    // Busca un índice que NO esté en el historial de reproducción.
                     do {
                         nextIndex = Math.floor(Math.random() * playlist.length);
                     } while (playHistory.includes(nextIndex)); 
-
-                    loadTrack(nextIndex); // Carga la nueva canción
+                    loadTrack(nextIndex);
                 } else {
-                    // Lógica para el modo secuencial
                     const newIndex = (currentTrackIndex + 1) % playlist.length;
                     loadTrack(newIndex);
                 }
@@ -482,26 +497,18 @@
 
             const playPrev = () => {
                 if (playlist.length === 0) return;
-
-                // Reiniciar canción si ha avanzado más de 3 segundos
                 if (audioPlayer.currentTime > 10) {
                     audioPlayer.currentTime = 0;
                     return;
                 }
-
-                // En modo aleatorio, ir a la canción anterior en el historial
                 if (isShuffle && playHistory.length > 1) {
-                    playHistory.pop(); // Elimina la canción actual del historial
-                    const prevIndex = playHistory[playHistory.length - 1]; // Obtiene la anterior
-                    loadTrack(prevIndex, false); // Carga sin añadirla de nuevo al historial
+                    playHistory.pop(); 
+                    const prevIndex = playHistory[playHistory.length - 1]; 
+                    loadTrack(prevIndex, false); 
                     return;
                 }
-
-                // Comportamiento por defecto (secuencial o sin historial)
                 let newIndex = currentTrackIndex - 1;
-                if (newIndex < 0) {
-                    newIndex = playlist.length - 1; // Ir al final
-                }
+                if (newIndex < 0) { newIndex = playlist.length - 1; }
                 loadTrack(newIndex);
             };
 
@@ -543,9 +550,7 @@
                 if (currentTrackIndex === -1 || !audioPlayer.duration) return;
                 const rect = progressContainer.getBoundingClientRect();
                 const clientX = getClientX(e);
-                const clickX = clientX - rect.left;
-                const width = progressContainer.clientWidth;
-                let progress = clickX / width;
+                let progress = (clientX - rect.left) / rect.width;
                 progress = Math.max(0, Math.min(1, progress));
 
                 progressBar.style.width = `${progress * 100}%`;
@@ -555,30 +560,18 @@
                 }
             };
 
-            progressContainer.addEventListener('mousedown', (e) => {
-                isDraggingProgress = true;
-                updateProgress(e);
-            });
-            progressContainer.addEventListener('touchstart', (e) => {
-                isDraggingProgress = true;
-                updateProgress(e);
-            });
+            progressContainer.addEventListener('mousedown', (e) => { isDraggingProgress = true; updateProgress(e); });
+            progressContainer.addEventListener('touchstart', (e) => { isDraggingProgress = true; updateProgress(e); });
 
             // --- Lógica de Volumen con Barra Personalizada ---
             const updateVolumeIcon = (volume) => {
                 volumeHighIcon.classList.add('hidden');
                 volumeLowIcon.classList.add('hidden');
                 volumeMuteIcon.classList.add('hidden');
-                
                 volumeIconContainer.classList.toggle('active', volume === 0);
-
-                if (volume === 0) {
-                    volumeMuteIcon.classList.remove('hidden');
-                } else if (volume > 0.5) {
-                    volumeHighIcon.classList.remove('hidden');
-                } else {
-                    volumeLowIcon.classList.remove('hidden');
-                }
+                if (volume === 0) { volumeMuteIcon.classList.remove('hidden'); }
+                else if (volume > 0.5) { volumeHighIcon.classList.remove('hidden'); }
+                else { volumeLowIcon.classList.remove('hidden'); }
             };
 
             const setVolume = (volume) => {
@@ -591,22 +584,13 @@
             const handleVolumeChange = (e) => {
                 const rect = volumeContainer.getBoundingClientRect();
                 const clientX = getClientX(e);
-                const clickX = clientX - rect.left;
-                const width = volumeContainer.clientWidth;
-                let newVolume = clickX / width;
-                newVolume = Math.max(0, Math.min(1, newVolume));
+                let newVolume = (clientX - rect.left) / rect.width;
                 setVolume(newVolume);
                 if (newVolume > 0) { lastVolume = newVolume; }
             };
 
-            volumeContainer.addEventListener('mousedown', (e) => {
-                isDraggingVolume = true;
-                handleVolumeChange(e);
-            });
-            volumeContainer.addEventListener('touchstart', (e) => {
-                isDraggingVolume = true;
-                handleVolumeChange(e);
-            });
+            volumeContainer.addEventListener('mousedown', (e) => { isDraggingVolume = true; handleVolumeChange(e); });
+            volumeContainer.addEventListener('touchstart', (e) => { isDraggingVolume = true; handleVolumeChange(e); });
             
             volumeIconContainer.addEventListener('click', () => {
                 const currentVolume = audioPlayer.volume;
@@ -618,7 +602,6 @@
                 }
             });
 
-            // Eventos de arrastre y finalización en todo el documento
             document.addEventListener('mousemove', (e) => {
                 if (isDraggingProgress) { updateProgress(e); }
                 if (isDraggingVolume) { handleVolumeChange(e); }
@@ -628,24 +611,18 @@
                 if (isDraggingVolume) { handleVolumeChange(e); }
             });
 
-            document.addEventListener('mouseup', (e) => {
+            const stopDragging = (e) => {
                 if (isDraggingProgress) {
                     isDraggingProgress = false;
-                    updateProgress(e); 
                     audioPlayer.currentTime = (parseFloat(progressBar.style.width) / 100) * audioPlayer.duration;
                 }
-                isDraggingVolume = false;
-            });
-            document.addEventListener('touchend', (e) => {
-                 if (isDraggingProgress) {
-                    isDraggingProgress = false;
-                    updateProgress(e);
-                    audioPlayer.currentTime = (parseFloat(progressBar.style.width) / 100) * audioPlayer.duration;
+                if (isDraggingVolume) {
+                    isDraggingVolume = false;
                 }
-                isDraggingVolume = false;
-            });
+            };
+            document.addEventListener('mouseup', stopDragging);
+            document.addEventListener('touchend', stopDragging);
 
-            // Lógica de Repetir y Aleatorio
             repeatButton.addEventListener('click', () => {
                 isRepeat = !isRepeat;
                 repeatButton.classList.toggle('active', isRepeat);
@@ -653,7 +630,6 @@
             shuffleButton.addEventListener('click', () => {
                 isShuffle = !isShuffle;
                 shuffleButton.classList.toggle('active', isShuffle);
-                // Reinicia el historial cuando se activa/desactiva para evitar comportamientos extraños
                 playHistory = currentTrackIndex !== -1 ? [currentTrackIndex] : [];
             });
 
@@ -662,24 +638,16 @@
             fileInput.addEventListener('change', (e) => {
                 const files = e.target.files;
                 if (files.length === 0) return;
-
                 const wasPlayerEmpty = playlist.length === 0;
-
                 const newTracksPromises = Array.from(files)
                     .filter(file => !playlist.some(track => track.name === file.name && track.file.size === file.size))
                     .map(file => {
                         return new Promise((resolve) => {
                             const track = {
-                                file: file,
-                                url: URL.createObjectURL(file),
-                                name: file.name,
-                                type: file.type || 'unknown',
-                                title: file.name.replace(/\.[^/.]+$/, ""),
-                                artist: "Artista Desconocido",
-                                picture: null,
-                                videoThumbnailUrl: null
+                                file: file, url: URL.createObjectURL(file), name: file.name,
+                                type: file.type || 'unknown', title: file.name.replace(/\.[^/.]+$/, ""),
+                                artist: "Artista Desconocido", picture: null, videoThumbnailUrl: null
                             };
-
                             if (file.type.startsWith('audio/')) {
                                 window.jsmediatags.read(file, {
                                     onSuccess: (tag) => {
@@ -688,32 +656,24 @@
                                         track.picture = tag.tags.picture;
                                         resolve(track);
                                     },
-                                    onError: (error) => {
-                                        resolve(track);
-                                    }
+                                    onError: (error) => resolve(track)
                                 });
                             } else if (file.type.startsWith('video/')) {
                                 track.artist = "Audio de Video";
                                 const video = document.createElement('video');
                                 const canvas = document.createElement('canvas');
                                 const ctx = canvas.getContext('2d');
-                                
                                 video.src = track.url;
                                 video.muted = true;
-                                video.onloadedmetadata = () => {
-                                    video.currentTime = video.duration * 0.1;
-                                };
+                                video.onloadedmetadata = () => { video.currentTime = video.duration * 0.1; };
                                 video.onseeked = () => {
                                     canvas.width = video.videoWidth;
                                     canvas.height = video.videoHeight;
                                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                                     track.videoThumbnailUrl = canvas.toDataURL('image/jpeg');
-                                    resolve(track); 
-                                };
-                                video.onerror = () => {
-                                    console.error("No se pudo cargar el video para extraer la carátula.");
                                     resolve(track);
                                 };
+                                video.onerror = () => { console.error("Error al cargar thumbnail de video."); resolve(track); };
                             } else {
                                 resolve(track);
                             }
@@ -727,18 +687,14 @@
                         loadTrack(0);
                     }
                 });
-
                 fileInput.value = '';
             });
 
-            // --- FUNCIÓN PARA ELIMINAR UNA CANCIÓN ---
             const deleteTrack = (indexToDelete) => {
                 if (indexToDelete < 0 || indexToDelete >= playlist.length) return;
-
                 URL.revokeObjectURL(playlist[indexToDelete].url);
                 playlist.splice(indexToDelete, 1);
                 
-                // Actualiza el historial de reproducción al eliminar una canción
                 playHistory = playHistory.map(i => {
                     if (i === indexToDelete) return -1;
                     if (i > indexToDelete) return i - 1;
@@ -769,8 +725,8 @@
             const updatePlaylistUI = () => {
                 playlistEl.innerHTML = '';
                 if (playlist.length === 0) {
-                     playlistEl.innerHTML = '<li class="py-1 px-2 text-gray-500">Carga archivos para ver tu lista aquí.</li>';
-                     return;
+                    playlistEl.innerHTML = '<li class="py-1 px-2" style="color: var(--secondary-text)">Carga archivos para ver tu lista aquí.</li>';
+                    return;
                 }
                 playlist.forEach((track, index) => {
                     const li = document.createElement('li');
@@ -789,7 +745,7 @@
                         playingIconContainer.className = 'flex items-center';
                         const playingIcon = document.createElement('div');
                         playingIcon.className = 'flex items-center space-x-px';
-                        for (let i = 0; i < 4; i++) {
+                        for (let i = 0; i < 3; i++) {
                             const bar = document.createElement('span');
                             bar.className = 'playing-icon-bar';
                             playingIcon.appendChild(bar);
@@ -831,12 +787,9 @@
                         }, longPressDuration);
                     });
 
-                    li.addEventListener('touchend', () => {
-                        clearTimeout(longPressTimer);
-                    });
-                    li.addEventListener('touchmove', () => {
-                        clearTimeout(longPressTimer);
-                    });
+                    const clearLongPress = () => clearTimeout(longPressTimer);
+                    li.addEventListener('touchend', clearLongPress);
+                    li.addEventListener('touchmove', clearLongPress);
 
                     playlistEl.appendChild(li);
                 });
@@ -857,11 +810,8 @@
 
             window.addEventListener('resize', handleResponsiveLayout);
 
-            // --- INICIALIZACIÓN Y MEJORAS DE BLOQUEO ---
-            
-            // MEJORA: Bloquea el menú contextual (clic derecho) en toda la página.
+            // --- INICIALIZACIÓN ---
             document.addEventListener('contextmenu', e => e.preventDefault());
-
             setVolume(1);
             handleResponsiveLayout();
             updateDynamicColors(); 
