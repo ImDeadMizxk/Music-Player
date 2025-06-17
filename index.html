@@ -40,6 +40,7 @@
             height: 100%;  
             border-radius: 9999px;  
             width: 0%;  
+            /* Se quita la transición para que el arrastre sea instantáneo */
         }
 
         /* --- Nuevos estilos para la barra de volumen personalizada --- */
@@ -87,6 +88,22 @@
         /* Estilos de la lista de reproducción */
         .playlist-container { scroll-behavior: smooth; }
         .playlist-item.active { background-color: rgba(255, 255, 255, 0.2); font-weight: 700; }
+        
+        /* --- NUEVO: Estilo para el icono de eliminar --- */
+        .delete-icon {
+            display: none; /* Oculto por defecto */
+            margin-left: auto; /* Empuja el icono a la derecha */
+            padding: 4px;
+            border-radius: 50%;
+            transition: background-color 0.2s;
+        }
+        .delete-icon:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+        /* Muestra el icono al pasar el mouse sobre el elemento de la lista o cuando está "forzado" por JS */
+        .playlist-item:hover .delete-icon, .playlist-item.force-show .delete-icon {
+            display: block;
+        }
         
         /* Estilos para botones de control */
         .control-button { color: #9ca3af; /* gray-400 */ }
@@ -138,6 +155,7 @@
         #player-container.light-theme .volume-bar::after { background-color: #1f2937; }
         #player-container.light-theme #play-pause-button { background-color: #1f2937; color: #ffffff; }
         #player-container.light-theme .playlist-item.active { background-color: rgba(0,0,0,0.1); }
+        #player-container.light-theme .delete-icon:hover { background-color: rgba(0,0,0,0.2); }
 
         /* Estilos para el botón de carga con sombra y transición */
         #upload-button {
@@ -150,26 +168,6 @@
         /* Margen superior para el botón cuando está en la vista móvil */
         #right-column > #upload-wrapper {
              margin-top: 1.5rem; /* 24px */
-        }
-        
-        /* --- MEJORA: ESTILOS PARA EL BOTÓN DE ELIMINAR --- */
-        .delete-button {
-            opacity: 0; /* Oculto por defecto en dispositivos con mouse */
-            transition: opacity 0.2s ease-in-out;
-            padding: 4px; /* Área de toque más grande */
-            flex-shrink: 0; /* Evita que el botón se encoja */
-        }
-
-        /* Muestra el botón al pasar el mouse sobre el elemento de la lista */
-        .playlist-item:hover .delete-button {
-            opacity: 1;
-        }
-
-        /* Para dispositivos táctiles (sin hover), haz el botón visible por defecto */
-        @media (hover: none) {
-            .delete-button {
-                opacity: 0.7; /* Ligeramente transparente para no ser tan agresivo */
-            }
         }
     </style>
 </head>
@@ -297,15 +295,16 @@
             // --- ESTADO DEL REPRODUCTOR ---
             let playlist = [];
             let currentTrackIndex = -1;
+            let playHistory = []; // NUEVO: Historial de reproducción para el modo aleatorio
             let isPlaying = false;
             let isRepeat = false;
             let isShuffle = false;
             let lastVolume = 1;
-            let isDefaultArt = true; 
-            let prevClickTimeout = null; 
-            let playHistory = [];
+            let isDefaultArt = true;
             let isDraggingVolume = false;
             let isDraggingProgress = false;
+            let longPressTimer; 
+            const longPressDuration = 500;
 
             const colorThief = new ColorThief();
 
@@ -326,7 +325,7 @@
             const adjustTitleFontSize = () => {
                 const element = trackTitleEl;
                 const container = element.parentElement;
-                element.style.fontSize = ''; 
+                element.style.fontSize = '';  
                 const baseFontSize = parseFloat(window.getComputedStyle(element).fontSize);
                 if (element.scrollWidth > container.clientWidth) {
                     let newFontSize = (container.clientWidth / element.scrollWidth) * baseFontSize;
@@ -343,10 +342,16 @@
             // --- ACTUALIZACIÓN DE LA INFORMACIÓN DE LA PISTA ---
             const updateTrackInfo = (index) => {
                 const track = playlist[index];
-                if (!track) return;
+                if (!track) { 
+                    trackTitleEl.textContent = 'Título';
+                    trackArtistEl.textContent = 'Artista';
+                    albumArtEl.src = 'https://i.imgur.com/HUhIujV.jpeg';
+                    isDefaultArt = true;
+                    updateDynamicColors();
+                    return;
+                }
 
                 const setArt = (isCustom) => { isDefaultArt = !isCustom; };
-
                 trackTitleEl.textContent = track.title;
                 trackArtistEl.textContent = track.artist;
 
@@ -402,11 +407,15 @@
             // --- LÓGICA DEL REPRODUCTOR ---
             const loadTrack = (index, updateHistory = true) => {
                 if (index < 0 || index >= playlist.length) return;
+
+                // AÑADIDO: Actualiza el historial de reproducción
                 if (updateHistory) {
+                    // Evita añadir la misma canción consecutivamente al historial
                     if (playHistory.length === 0 || playHistory[playHistory.length - 1] !== index) {
                         playHistory.push(index);
                     }
                 }
+                
                 currentTrackIndex = index;
                 const track = playlist[index];
                 audioPlayer.src = track.url;
@@ -464,25 +473,29 @@
 
             const playPrev = () => {
                 if (playlist.length === 0) return;
-                if (audioPlayer.currentTime > 3 && !prevClickTimeout) {
+
+                // Comportamiento universal: reiniciar la canción si ha avanzado más de 3 segundos
+                if (audioPlayer.currentTime > 3) {
                     audioPlayer.currentTime = 0;
-                    prevClickTimeout = setTimeout(() => { prevClickTimeout = null; }, 500);
                     return;
                 }
-                if (prevClickTimeout) {
-                    clearTimeout(prevClickTimeout);
-                    prevClickTimeout = null;
+
+                // LÓGICA ACTUALIZADA: Si el modo aleatorio está activo y hay historial, ve al anterior del historial
+                if (isShuffle && playHistory.length > 1) {
+                    playHistory.pop(); // Elimina la canción actual del historial
+                    const prevIndex = playHistory[playHistory.length - 1]; // Obtiene la canción realmente anterior
+                    loadTrack(prevIndex, false); // Carga la canción sin volver a añadirla al historial
+                    return; // Termina la ejecución aquí
                 }
-                if (playHistory.length > 1) {
-                    playHistory.pop(); 
-                    const previousTrackIndex = playHistory[playHistory.length - 1];
-                    loadTrack(previousTrackIndex, false);
-                } else {
-                    let newIndex = currentTrackIndex - 1;
-                    if (newIndex < 0) { newIndex = playlist.length - 1; }
-                    loadTrack(newIndex);
+
+                // Comportamiento por defecto (modo aleatorio apagado o sin historial)
+                let newIndex = currentTrackIndex - 1;
+                if (newIndex < 0) {
+                    newIndex = playlist.length - 1; // Ir al final de la lista
                 }
+                loadTrack(newIndex);
             };
+
 
             const handleTrackEnd = () => {
                 if (isRepeat) {
@@ -597,6 +610,7 @@
                 }
             });
 
+            // Eventos de arrastre y finalización en todo el documento
             document.addEventListener('mousemove', (e) => {
                 if (isDraggingProgress) { updateProgress(e); }
                 if (isDraggingVolume) { handleVolumeChange(e); }
@@ -631,10 +645,11 @@
             shuffleButton.addEventListener('click', () => {
                 isShuffle = !isShuffle;
                 shuffleButton.classList.toggle('active', isShuffle);
+                // Reinicia el historial cuando se activa/desactiva el modo aleatorio para evitar comportamientos extraños
                 playHistory = currentTrackIndex !== -1 ? [currentTrackIndex] : [];
             });
 
-            // --- LÓGICA DE CARGA DE ARCHIVOS ---
+            // --- LÓGICA DE CARGA DE ARCHIVOS (OPTIMIZADA CON EXTRACCIÓN DE CARÁTULA DE VIDEO) ---
             uploadButton.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', (e) => {
                 const files = e.target.files;
@@ -677,11 +692,9 @@
                                 
                                 video.src = track.url;
                                 video.muted = true;
-
                                 video.onloadedmetadata = () => {
                                     video.currentTime = video.duration * 0.1;
                                 };
-
                                 video.onseeked = () => {
                                     canvas.width = video.videoWidth;
                                     canvas.height = video.videoHeight;
@@ -689,7 +702,6 @@
                                     track.videoThumbnailUrl = canvas.toDataURL('image/jpeg');
                                     resolve(track); 
                                 };
-
                                 video.onerror = () => {
                                     console.error("No se pudo cargar el video para extraer la carátula.");
                                     resolve(track);
@@ -710,50 +722,42 @@
 
                 fileInput.value = '';
             });
-            
-            // --- NUEVA FUNCIÓN: ELIMINAR CANCIÓN ---
-            const removeTrack = (indexToRemove) => {
-                // Revocar el Object URL para liberar memoria
-                URL.revokeObjectURL(playlist[indexToRemove].url);
 
-                const wasPlaying = (indexToRemove === currentTrackIndex);
-                
-                // Eliminar la canción del array de la lista de reproducción
-                playlist.splice(indexToRemove, 1);
-                
-                // Actualizar el historial de reproducción
-                playHistory = playHistory
-                    .map(i => (i > indexToRemove ? i - 1 : i))
-                    .filter(i => i !== indexToRemove);
+            // --- FUNCIÓN PARA ELIMINAR UNA CANCIÓN ---
+            const deleteTrack = (indexToDelete) => {
+                if (indexToDelete < 0 || indexToDelete >= playlist.length) return;
 
-                if (playlist.length === 0) {
-                    // Si la lista está vacía, reiniciar el reproductor
+                URL.revokeObjectURL(playlist[indexToDelete].url);
+                playlist.splice(indexToDelete, 1);
+                
+                // ACTUALIZADO: Maneja el historial de reproducción al eliminar
+                playHistory = playHistory.map(i => {
+                    if (i === indexToDelete) return -1;
+                    if (i > indexToDelete) return i - 1;
+                    return i;
+                }).filter(i => i !== -1);
+
+                if (currentTrackIndex === indexToDelete) {
                     pauseMedia();
-                    audioPlayer.src = '';
-                    currentTrackIndex = -1;
-                    trackTitleEl.textContent = 'Título';
-                    trackArtistEl.textContent = 'Artista';
-                    albumArtEl.src = 'https://i.imgur.com/HUhIujV.jpeg';
-                    isDefaultArt = true;
-                    updateDynamicColors();
-                    playHistory = [];
-                    progressBar.style.width = '0%';
-                    currentTimeEl.textContent = '0:00';
-                    durationEl.textContent = '0:00';
-                } else if (wasPlaying) {
-                    // Si se eliminó la canción actual, reproducir la siguiente
-                    const newIndex = indexToRemove % playlist.length;
-                    loadTrack(newIndex);
-                } else if (indexToRemove < currentTrackIndex) {
-                    // Si se eliminó una canción anterior a la actual, ajustar el índice
+                    audioPlayer.src = "";
+                    if (playlist.length > 0) {
+                        currentTrackIndex = indexToDelete % playlist.length;
+                        loadTrack(currentTrackIndex);
+                    } else {
+                        currentTrackIndex = -1;
+                        updateTrackInfo(null);
+                        currentTimeEl.textContent = '0:00';
+                        durationEl.textContent = '0:00';
+                        progressBar.style.width = '0%';
+                    }
+                } else if (currentTrackIndex > indexToDelete) {
                     currentTrackIndex--;
                 }
-
-                // Actualizar la interfaz de la lista de reproducción
+                
                 updatePlaylistUI();
             };
             
-            // --- ACTUALIZACIÓN DE LA UI DE LA LISTA DE REPRODUCCIÓN (MODIFICADA) ---
+            // --- ACTUALIZACIÓN DE LA UI DE LA LISTA DE REPRODUCCIÓN ---
             const updatePlaylistUI = () => {
                 playlistEl.innerHTML = '';
                 if (playlist.length === 0) {
@@ -762,57 +766,72 @@
                 }
                 playlist.forEach((track, index) => {
                     const li = document.createElement('li');
-                    li.className = 'py-1 px-2 rounded-md cursor-pointer hover:bg-white/20 transition playlist-item flex items-center justify-between gap-2';
-                    li.dataset.index = index;
-
+                    li.className = 'py-1 px-2 rounded-md cursor-pointer hover:bg-white/20 transition playlist-item flex items-center justify-between group';
+                    
+                    const contentWrapper = document.createElement('div');
+                    contentWrapper.className = 'flex items-center space-x-3 overflow-hidden';
+                    
                     const trackNameSpan = document.createElement('span');
                     trackNameSpan.textContent = track.title; 
-                    trackNameSpan.className = 'truncate flex-grow';
-                    li.appendChild(trackNameSpan);
+                    trackNameSpan.className = 'truncate';
+                    contentWrapper.appendChild(trackNameSpan);
 
-                    const iconsContainer = document.createElement('div');
-                    iconsContainer.className = 'flex items-center flex-shrink-0 gap-2';
-
-                    // Añade el ícono de reproducción si la canción está sonando
                     if (index === currentTrackIndex && isPlaying) {
+                        const playingIconContainer = document.createElement('div');
+                        playingIconContainer.className = 'flex items-center';
                         const playingIcon = document.createElement('div');
-                        playingIcon.className = 'flex items-center';
+                        playingIcon.className = 'flex items-center space-x-px';
                         for (let i = 0; i < 4; i++) {
                             const bar = document.createElement('span');
                             bar.className = 'playing-icon-bar';
                             playingIcon.appendChild(bar);
                         }
-                        iconsContainer.appendChild(playingIcon);
+                        playingIconContainer.appendChild(playingIcon);
+                        contentWrapper.appendChild(playingIconContainer);
                     }
                     
-                    // --- MEJORA: Crear y añadir el botón de eliminar ---
-                    const deleteButton = document.createElement('button');
-                    deleteButton.className = 'delete-button text-gray-400 hover:text-white transition-colors';
-                    deleteButton.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd"></path></svg>`;
-                    deleteButton.title = "Eliminar de la lista";
-                    
-                    deleteButton.addEventListener('click', (e) => {
-                        e.stopPropagation(); // Evita que se reproduzca la canción al hacer clic en el botón
-                        removeTrack(index);
+                    li.appendChild(contentWrapper);
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'delete-icon p-1 rounded-full';
+                    deleteBtn.innerHTML = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd"></path></svg>`;
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        deleteTrack(index);
                     });
-                    
-                    iconsContainer.appendChild(deleteButton);
-                    li.appendChild(iconsContainer);
-                    
+                    li.appendChild(deleteBtn);
+
                     if (index === currentTrackIndex) { 
                         li.classList.add('active'); 
                     }
-                    
-                    li.addEventListener('click', () => { 
+                    li.dataset.index = index;
+
+                    li.addEventListener('click', (e) => { 
+                        if (e.target.closest('.delete-icon')) return;
                         if (currentTrackIndex === index) {
                             togglePlayPause();
                         } else {
                             loadTrack(index);
                         }
                     });
+
+                    li.addEventListener('touchstart', (e) => {
+                        clearTimeout(longPressTimer);
+                        longPressTimer = setTimeout(() => {
+                            document.querySelectorAll('.playlist-item.force-show').forEach(el => el.classList.remove('force-show'));
+                            li.classList.add('force-show');
+                        }, longPressDuration);
+                    });
+
+                    li.addEventListener('touchend', () => {
+                        clearTimeout(longPressTimer);
+                    });
+                    li.addEventListener('touchmove', () => {
+                        clearTimeout(longPressTimer);
+                    });
+
                     playlistEl.appendChild(li);
                 });
-                
                 const activeItem = playlistEl.querySelector('.active');
                 if (activeItem) {
                     activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -820,7 +839,7 @@
             };
             
             const handleResponsiveLayout = () => {
-                if (window.innerWidth < 768) { 
+                if (window.innerWidth < 768) {
                     if (uploadWrapper.parentElement !== rightColumn) { rightColumn.appendChild(uploadWrapper); }
                 } else {
                     if (uploadWrapper.parentElement !== leftColumn) { leftColumn.appendChild(uploadWrapper); }
