@@ -65,17 +65,15 @@
             right: -8px; /* Centra el círculo al final de la barra */
             top: 50%;
             transform: translateY(-50%);
-            width: 16px;
-            height: 16px;
+            width: 13px;
+            height: 13px;
             background-color: white;
             border-radius: 50%;
             box-shadow: 0 0 5px rgba(0,0,0,0.3);
-            opacity: 0; /* Inicia oculto */
+
             transition: opacity 0.2s ease-in-out;
         }
-        .volume-bar-container:hover .volume-bar::after {
-            opacity: 1; /* Se muestra al hacer hover sobre el contenedor */
-        }
+
         
         /* Efecto de cristal esmerilado para el reproductor */
         #player-container {  
@@ -179,7 +177,8 @@
             <!-- Columna Izquierda: Carátula y (en escritorio) Botón de Carga -->
             <div id="left-column" class="md:w-1/2 lg:w-2/5 p-6 md:p-8 flex flex-col items-center">
                 <div class="w-full aspect-square bg-gray-700 rounded-lg shadow-lg flex items-center justify-center overflow-hidden">
-                    <img id="album-art" src="https://i.imgur.com/HUhIujV.jpeg" crossorigin="anonymous" class="w-full h-full object-cover">
+                    <!-- MEJORA: Se añade oncontextmenu y ondragstart para bloquear clic derecho y arrastre -->
+                    <img id="album-art" src="https://i.imgur.com/HUhIujV.jpeg" crossorigin="anonymous" class="w-full h-full object-cover" oncontextmenu="return false;" ondragstart="return false;">
                 </div>
                 <!-- El wrapper del botón se moverá con JS. Comienza aquí para el diseño de escritorio. -->
                 <div id="upload-wrapper" class="w-full mt-6">
@@ -295,7 +294,7 @@
             // --- ESTADO DEL REPRODUCTOR ---
             let playlist = [];
             let currentTrackIndex = -1;
-            let playHistory = []; // NUEVO: Historial de reproducción para el modo aleatorio
+            let playHistory = []; // Historial de reproducción para el modo aleatorio mejorado
             let isPlaying = false;
             let isRepeat = false;
             let isShuffle = false;
@@ -408,9 +407,8 @@
             const loadTrack = (index, updateHistory = true) => {
                 if (index < 0 || index >= playlist.length) return;
 
-                // AÑADIDO: Actualiza el historial de reproducción
-                if (updateHistory) {
-                    // Evita añadir la misma canción consecutivamente al historial
+                // Actualiza el historial de reproducción solo si es necesario
+                if (updateHistory && isShuffle) {
                     if (playHistory.length === 0 || playHistory[playHistory.length - 1] !== index) {
                         playHistory.push(index);
                     }
@@ -452,20 +450,31 @@
                     }
                 }
             };
-            
+
+            // MEJORA: Lógica de 'playNext' actualizada para un modo aleatorio inteligente
             const playNext = () => {
                 if (playlist.length === 0) return;
+
                 if (isShuffle) {
-                    let randomIndex;
                     if (playlist.length <= 1) {
-                        randomIndex = 0;
-                    } else {
-                        do {
-                            randomIndex = Math.floor(Math.random() * playlist.length);
-                        } while (randomIndex === currentTrackIndex);
+                        loadTrack(0);
+                        return;
                     }
-                    loadTrack(randomIndex);
+
+                    // Si todas las canciones ya se han reproducido en este ciclo, reinicia el historial.
+                    if (playHistory.length >= playlist.length) {
+                        playHistory = [currentTrackIndex]; // Mantiene solo la actual para no repetirla.
+                    }
+
+                    let nextIndex;
+                    // Busca un índice que NO esté en el historial de reproducción.
+                    do {
+                        nextIndex = Math.floor(Math.random() * playlist.length);
+                    } while (playHistory.includes(nextIndex)); 
+
+                    loadTrack(nextIndex); // Carga la nueva canción
                 } else {
+                    // Lógica para el modo secuencial
                     const newIndex = (currentTrackIndex + 1) % playlist.length;
                     loadTrack(newIndex);
                 }
@@ -474,28 +483,27 @@
             const playPrev = () => {
                 if (playlist.length === 0) return;
 
-                // Comportamiento universal: reiniciar la canción si ha avanzado más de 3 segundos
-                if (audioPlayer.currentTime > 3) {
+                // Reiniciar canción si ha avanzado más de 3 segundos
+                if (audioPlayer.currentTime > 10) {
                     audioPlayer.currentTime = 0;
                     return;
                 }
 
-                // LÓGICA ACTUALIZADA: Si el modo aleatorio está activo y hay historial, ve al anterior del historial
+                // En modo aleatorio, ir a la canción anterior en el historial
                 if (isShuffle && playHistory.length > 1) {
                     playHistory.pop(); // Elimina la canción actual del historial
-                    const prevIndex = playHistory[playHistory.length - 1]; // Obtiene la canción realmente anterior
-                    loadTrack(prevIndex, false); // Carga la canción sin volver a añadirla al historial
-                    return; // Termina la ejecución aquí
+                    const prevIndex = playHistory[playHistory.length - 1]; // Obtiene la anterior
+                    loadTrack(prevIndex, false); // Carga sin añadirla de nuevo al historial
+                    return;
                 }
 
-                // Comportamiento por defecto (modo aleatorio apagado o sin historial)
+                // Comportamiento por defecto (secuencial o sin historial)
                 let newIndex = currentTrackIndex - 1;
                 if (newIndex < 0) {
-                    newIndex = playlist.length - 1; // Ir al final de la lista
+                    newIndex = playlist.length - 1; // Ir al final
                 }
                 loadTrack(newIndex);
             };
-
 
             const handleTrackEnd = () => {
                 if (isRepeat) {
@@ -645,11 +653,11 @@
             shuffleButton.addEventListener('click', () => {
                 isShuffle = !isShuffle;
                 shuffleButton.classList.toggle('active', isShuffle);
-                // Reinicia el historial cuando se activa/desactiva el modo aleatorio para evitar comportamientos extraños
+                // Reinicia el historial cuando se activa/desactiva para evitar comportamientos extraños
                 playHistory = currentTrackIndex !== -1 ? [currentTrackIndex] : [];
             });
 
-            // --- LÓGICA DE CARGA DE ARCHIVOS (OPTIMIZADA CON EXTRACCIÓN DE CARÁTULA DE VIDEO) ---
+            // --- LÓGICA DE CARGA DE ARCHIVOS ---
             uploadButton.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', (e) => {
                 const files = e.target.files;
@@ -730,7 +738,7 @@
                 URL.revokeObjectURL(playlist[indexToDelete].url);
                 playlist.splice(indexToDelete, 1);
                 
-                // ACTUALIZADO: Maneja el historial de reproducción al eliminar
+                // Actualiza el historial de reproducción al eliminar una canción
                 playHistory = playHistory.map(i => {
                     if (i === indexToDelete) return -1;
                     if (i > indexToDelete) return i - 1;
@@ -849,7 +857,11 @@
 
             window.addEventListener('resize', handleResponsiveLayout);
 
-            // --- INICIALIZACIÓN ---
+            // --- INICIALIZACIÓN Y MEJORAS DE BLOQUEO ---
+            
+            // MEJORA: Bloquea el menú contextual (clic derecho) en toda la página.
+            document.addEventListener('contextmenu', e => e.preventDefault());
+
             setVolume(1);
             handleResponsiveLayout();
             updateDynamicColors(); 
