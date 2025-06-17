@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Player</title>
+    
+    <!-- Tailwind CSS para el diseño -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="icon" href="https://i.imgur.com/HUhIujV.jpeg" type="image/jpeg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Librerías de JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.2/color-thief.umd.js"></script>
+
+    <style>
+        /* Transición suave para el color de fondo de toda la página */
+        body {  
+            font-family: 'Inter', sans-serif;  
+            transition: background-color 0.8s ease-in-out;
+            /* Evita la selección de texto al arrastrar */
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* --- Estilos para barras personalizadas (Progreso y Volumen) --- */
+        .progress-bar-container {  
+            height: 6px;  
+            background-color: rgba(255, 255, 255, 0.2);  
+            border-radius: 9999px;  
+            cursor: pointer;  
+        }
+        .progress-bar {  
+            background-color: #ffffff;  
+            height: 100%;  
+            border-radius: 9999px;  
+            width: 0%;  
+            /* Se quita la transición para que el arrastre sea instantáneo */
+        }
+
+        /* --- Nuevos estilos para la barra de volumen personalizada --- */
+        .volume-bar-container {
+            height: 6px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 9999px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .volume-bar {
+            background-color: #ffffff;
+            height: 100%;
+            border-radius: 9999px;
+            width: 100%; /* Inicia al 100% */
+            position: relative;
+        }
+        /* Pequeño círculo al final de la barra para simular el "thumb" */
+        .volume-bar::after {
+            content: '';
+            position: absolute;
+            right: -8px; /* Centra el círculo al final de la barra */
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            background-color: white;
+            border-radius: 50%;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
+        
+        /* Efecto de cristal esmerilado para el reproductor */
+        #player-container {  
+            background-color: rgba(255, 255, 255, 0.1);  
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Estilos de la lista de reproducción */
+        .playlist-container { scroll-behavior: smooth; }
+        .playlist-item.active { background-color: rgba(255, 255, 255, 0.2); font-weight: 700; }
+        
+        /* Estilos para botones de control */
+        .control-button { color: #9ca3af; /* gray-400 */ }
+        .control-button:hover { color: #ffffff; }
+        .control-button.active { color: #ffffff; /* blanco para estado activo */ }
+        
+        /* Oculta la barra de scroll pero mantiene la funcionalidad */
+        .playlist-container {
+            -ms-overflow-style: none;  /* IE y Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        .playlist-container::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera y otros basados en Webkit */
+        }
+
+        /* --- Estilos para que el título no se corte y se ajuste con JS --- */
+        #track-title {
+            white-space: nowrap; /* Evita que el texto se divida en varias líneas */
+            overflow: hidden; /* Oculta el texto que desborda */
+            line-height: 1.2;
+        }
+        
+        /* MEJORA: Estilos para el ícono de "reproduciendo" */
+        @keyframes bounce {
+            0%, 100% { transform: scaleY(0.4); }
+            20% { transform: scaleY(1.0); }
+            50% { transform: scaleY(0.6); }
+            80% { transform: scaleY(0.8); }
+        }
+        .playing-icon-bar {
+            display: inline-block;
+            width: 3px;
+            height: 16px;
+            margin: 0 1px;
+            background-color: currentColor;
+            animation: bounce 1.2s infinite ease-in-out;
+        }
+        .playing-icon-bar:nth-child(2) { animation-delay: -1.0s; }
+        .playing-icon-bar:nth-child(3) { animation-delay: -0.8s; }
+        .playing-icon-bar:nth-child(4) { animation-delay: -0.6s; }
+        
+        /* --- ESTILOS PARA TEMA CLARO (ADAPTATIVO) --- */
+        #player-container.light-theme, #player-container.light-theme #track-title, #player-container.light-theme .text-lg { color: #1f2937; }
+        #player-container.light-theme .text-gray-400 { color: #4b5563; }
+        #player-container.light-theme .control-button { color: #4b5563; }
+        #player-container.light-theme .control-button.active, #player-container.light-theme .control-button:hover { color: #111827; }
+        #player-container.light-theme .progress-bar-container, #player-container.light-theme .volume-bar-container { background-color: rgba(0,0,0,0.1); }
+        #player-container.light-theme .progress-bar, #player-container.light-theme .volume-bar { background-color: #1f2937; }
+        #player-container.light-theme .volume-bar::after { background-color: #1f2937; }
+        #player-container.light-theme #play-pause-button { background-color: #1f2937; color: #ffffff; }
+        #player-container.light-theme .playlist-item.active { background-color: rgba(0,0,0,0.1); }
+
+        /* Estilos para el botón de carga con sombra y transición */
+        #upload-button {
+            transition: background-color 0.8s ease-in-out, color 0.8s ease-in-out, transform 0.2s ease, box-shadow 0.3s ease;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1), 0 3px 6px rgba(0, 0, 0, 0.15);
+        }
+        #upload-button:hover {
+            box-shadow: 0 14px 28px rgba(0,0,0,0.2), 0 10px 10px rgba(0,0,0,0.18);
+        }
+        /* Margen superior para el botón cuando está en la vista móvil */
+        #right-column > #upload-wrapper {
+             margin-top: 1.5rem; /* 24px */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
+
+    <div id="player-container" class="w-full max-w-4xl mx-auto rounded-2xl shadow-2xl overflow-hidden">
+        <div class="flex flex-col md:flex-row md:items-start">
+            
+            <!-- Columna Izquierda: Carátula y (en escritorio) Botón de Carga -->
+            <div id="left-column" class="md:w-1/2 lg:w-2/5 p-6 md:p-8 flex flex-col items-center">
+                <div class="w-full aspect-square bg-gray-700 rounded-lg shadow-lg flex items-center justify-center overflow-hidden">
+                    <img id="album-art" src="https://i.imgur.com/HUhIujV.jpeg" crossorigin="anonymous" class="w-full h-full object-cover">
+                </div>
+                <!-- El wrapper del botón se moverá con JS. Comienza aquí para el diseño de escritorio. -->
+                <div id="upload-wrapper" class="w-full mt-6">
+                    <button id="upload-button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-full transition-transform transform hover:scale-105 w-full">
+                        Cargar Archivos
+                    </button>
+                    <input type="file" id="file-input" multiple accept="audio/*,video/*,.mp3,.mp4,.mov,.m4a,.opus,.ogg,.wav,.flac,.webm" class="hidden">
+                </div>
+            </div>
+
+            <!-- Columna Derecha: Controles y Lista de Reproducción -->
+            <div id="right-column" class="md:w-1/2 lg:w-3/5 py-4 px-6 md:p-8 flex flex-col">
+                <!-- Contenedor con altura fija (h-24) para que no se estire. -->
+                <div class="text-center md:text-left mb-4 h-24 flex flex-col justify-center">
+                    <h2 id="track-title" class="text-3xl font-bold">Título</h2>
+                    <p id="track-artist" class="text-lg text-gray-400">Artista</p>
+                </div>
+                
+                <div class="mt-4">
+                    <!-- Barra de Progreso -->
+                    <div class="mb-3">
+                        <div id="progress-container" class="progress-bar-container">
+                            <div id="progress-bar" class="progress-bar"></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-400 mt-1">
+                            <span id="current-time">0:00</span>
+                            <span id="duration">0:00</span>
+                        </div>
+                    </div>
+
+                    <!-- Controles Principales -->
+                    <div class="flex items-center justify-center space-x-6 my-4">
+                        <button id="prev-button" class="text-gray-400 hover:text-white transition">
+                            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 18V6h2v12H6zm3.5-6L18 6v12l-8.5-6z"/></svg>
+                        </button>
+                        <button id="play-pause-button" class="bg-white text-gray-900 rounded-full p-4 transform hover:scale-110 transition shadow-lg">
+                            <svg id="play-icon" class="w-8 h-8" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M8 5.14v14l11-7-11-7Z"/></svg>
+                            <svg id="pause-icon" class="w-8 h-8 hidden" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M6 19h4V5H6v14Zm8-14v14h4V5h-4Z"/></svg>
+                        </button>
+                        <button id="next-button" class="text-gray-400 hover:text-white transition">
+                            <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M8 18V6l8.5 6L8 18zm9-12v12h2V6h-2z"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Controles Secundarios: Volumen, Aleatorio, Repetir -->
+                    <div class="flex items-center space-x-4 mt-4">
+                        <button id="shuffle-button" class="transition control-button">
+                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="16 16 21 16 21 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="11" y2="11"></line></svg>
+                        </button>
+                        <div id="volume-icon-container" class="transition control-button cursor-pointer">
+                            <svg id="volume-high" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                            <svg id="volume-low" class="w-6 h-6 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                            <svg id="volume-mute" class="w-6 h-6 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+                        </div>
+                        <!-- Barra de volumen personalizada -->
+                        <div class="volume-bar-container">
+                            <div id="volume-bar" class="volume-bar"></div>
+                        </div>
+                        <button id="repeat-button" class="transition control-button">
+                             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Lista de Reproducción -->
+                <div class="mt-8 flex-grow flex flex-col">
+                    <h3 class="text-xl font-semibold mb-2 text-center md:text-left">Lista de reproducción</h3>
+                    <div class="overflow-y-auto playlist-container flex-grow" style="max-height: 21vh; min-height: 100px;">
+                        <ul id="playlist" class="space-y-1">
+                            <li class="py-1 px-2 text-gray-500">Carga archivos para ver tu lista aquí.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- El reproductor de audio está oculto. Se usará para TODOS los archivos. -->
+    <audio id="audio-player" class="hidden"></audio>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- CONSTANTES DE ELEMENTOS DEL DOM ---
+            const playerContainer = document.getElementById('player-container');
+            const audioPlayer = document.getElementById('audio-player');
+            const fileInput = document.getElementById('file-input');
+            const uploadButton = document.getElementById('upload-button');
+            const uploadWrapper = document.getElementById('upload-wrapper');
+            const leftColumn = document.getElementById('left-column');
+            const rightColumn = document.getElementById('right-column');
+            const playPauseButton = document.getElementById('play-pause-button');
+            const playIcon = document.getElementById('play-icon');
+            const pauseIcon = document.getElementById('pause-icon');
+            const prevButton = document.getElementById('prev-button');
+            const nextButton = document.getElementById('next-button');
+            const repeatButton = document.getElementById('repeat-button');
+            const shuffleButton = document.getElementById('shuffle-button');
+            const volumeIconContainer = document.getElementById('volume-icon-container');
+            const volumeHighIcon = document.getElementById('volume-high');
+            const volumeLowIcon = document.getElementById('volume-low');
+            const volumeMuteIcon = document.getElementById('volume-mute');
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+            const currentTimeEl = document.getElementById('current-time');
+            const durationEl = document.getElementById('duration');
+            const trackTitleEl = document.getElementById('track-title');
+            const trackArtistEl = document.getElementById('track-artist');
+            const albumArtEl = document.getElementById('album-art');
+            const playlistEl = document.getElementById('playlist');
+            const volumeContainer = document.querySelector('.volume-bar-container');
+            const volumeBar = document.getElementById('volume-bar');
+
+            // --- ESTADO DEL REPRODUCTOR ---
+            let playlist = [];
+            let currentTrackIndex = -1;
+            let isPlaying = false;
+            let isRepeat = false;
+            let isShuffle = false;
+            let lastVolume = 1;
+            let isDefaultArt = true; 
+            let prevClickTimeout = null; 
+            let playHistory = [];
+            let isDraggingVolume = false;
+            let isDraggingProgress = false;
+
+            const colorThief = new ColorThief();
+
+            // --- FUNCIONES AUXILIARES ---
+            const formatTime = (seconds) => {
+                if (isNaN(seconds)) return '0:00';
+                const minutes = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+            };
+            
+            const getClientX = (e) => {
+                if (e.touches && e.touches.length > 0) return e.touches[0].clientX;
+                if (e.changedTouches && e.changedTouches.length > 0) return e.changedTouches[0].clientX;
+                return e.clientX;
+            };
+
+            const adjustTitleFontSize = () => {
+                const element = trackTitleEl;
+                const container = element.parentElement;
+                element.style.fontSize = ''; 
+                const baseFontSize = parseFloat(window.getComputedStyle(element).fontSize);
+                if (element.scrollWidth > container.clientWidth) {
+                    let newFontSize = (container.clientWidth / element.scrollWidth) * baseFontSize;
+                    newFontSize = Math.max(newFontSize, 14); 
+                    element.style.fontSize = `${newFontSize}px`;
+                }
+            };
+
+            const getContrastingTextColor = (rgb) => {
+                const luminance = (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255;
+                return luminance > 0.5 ? '#000000' : '#FFFFFF';
+            };
+            
+            // --- ACTUALIZACIÓN DE LA INFORMACIÓN DE LA PISTA ---
+            const updateTrackInfo = (index) => {
+                const track = playlist[index];
+                if (!track) return;
+
+                const setArt = (isCustom) => { isDefaultArt = !isCustom; };
+
+                // Utiliza la información de metadatos ya almacenada en el objeto de la pista
+                trackTitleEl.textContent = track.title;
+                trackArtistEl.textContent = track.artist;
+
+                if (track.picture) {
+                    setArt(true);
+                    let base64String = "";
+                    for (let i = 0; i < track.picture.data.length; i++) {
+                        base64String += String.fromCharCode(track.picture.data[i]);
+                    }
+                    albumArtEl.src = `data:${track.picture.format};base64,${window.btoa(base64String)}`;
+                } else {
+                    setArt(false);
+                    // Establece una carátula por defecto según el tipo de archivo
+                    if (track.type.startsWith('video/')) {
+                        albumArtEl.src = 'https://placehold.co/500x500/1f2937/7ca3f2?text=Audio+de+Video';
+                    } else {
+                        albumArtEl.src = 'https://placehold.co/500x500/1f2937/7ca3f2?text=Sin+Car%C3%A1tula';
+                    }
+                }
+                
+                adjustTitleFontSize();
+                updatePlaylistUI(); // Asegura que la lista se actualice
+            };
+            
+            const updateDynamicColors = () => {
+                if (isDefaultArt) {
+                    document.body.style.backgroundColor = '#111827'; // Gris oscuro por defecto
+                    playerContainer.classList.remove('light-theme');
+                    uploadButton.style.backgroundColor = '#4f46e5'; // Indigo por defecto
+                    uploadButton.style.color = '#ffffff';
+                    return;
+                }
+                if (!albumArtEl.complete || albumArtEl.naturalWidth === 0) return;
+                try {
+                    const dominantColor = colorThief.getColor(albumArtEl);
+                    document.body.style.backgroundColor = `rgb(${dominantColor[0]}, ${dominantColor[1]}, ${dominantColor[2]})`;
+                    const bodyLuminance = (0.299 * dominantColor[0] + 0.587 * dominantColor[1] + 0.114 * dominantColor[2]) / 255;
+                    playerContainer.classList.toggle('light-theme', bodyLuminance > 0.6);
+                    const palette = colorThief.getPalette(albumArtEl, 5);
+                    const buttonColor = palette[1] || dominantColor;
+                    uploadButton.style.backgroundColor = `rgb(${buttonColor[0]}, ${buttonColor[1]}, ${buttonColor[2]})`;
+                    uploadButton.style.color = getContrastingTextColor(buttonColor);
+                } catch (e) {
+                    console.error("Error con ColorThief: ", e);
+                    isDefaultArt = true;
+                    updateDynamicColors(); // Vuelve a los colores por defecto si hay error
+                }
+            };
+            albumArtEl.addEventListener('load', updateDynamicColors);
+
+            // --- LÓGICA DEL REPRODUCTOR ---
+            const loadTrack = (index, updateHistory = true) => {
+                if (index < 0 || index >= playlist.length) return;
+                if (updateHistory) {
+                    if (playHistory.length === 0 || playHistory[playHistory.length - 1] !== index) {
+                        playHistory.push(index);
+                    }
+                }
+                currentTrackIndex = index;
+                const track = playlist[index];
+                audioPlayer.src = track.url;
+                updateTrackInfo(index); 
+                playMedia();
+            };
+
+            const playMedia = () => {
+                if (currentTrackIndex === -1) return;
+                audioPlayer.play().then(() => {
+                    isPlaying = true;
+                    playIcon.classList.add('hidden');
+                    pauseIcon.classList.remove('hidden');
+                    updatePlaylistUI(); // MEJORA: Actualiza la UI para mostrar el ícono
+                }).catch(error => console.error("Error al reproducir:", error));
+            };
+
+            const pauseMedia = () => {
+                audioPlayer.pause();
+                isPlaying = false;
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+                updatePlaylistUI(); // MEJORA: Actualiza la UI para ocultar el ícono
+            };
+            
+            const togglePlayPause = () => {
+                if (isPlaying) {
+                    pauseMedia();
+                } else {
+                    if (currentTrackIndex !== -1) {
+                        playMedia();
+                    } else if (playlist.length > 0) {
+                        loadTrack(0);
+                    }
+                }
+            };
+            
+            const playNext = () => {
+                if (playlist.length === 0) return;
+                if (isShuffle) {
+                    let randomIndex;
+                    if (playlist.length <= 1) {
+                        randomIndex = 0;
+                    } else {
+                        do {
+                            randomIndex = Math.floor(Math.random() * playlist.length);
+                        } while (randomIndex === currentTrackIndex);
+                    }
+                    loadTrack(randomIndex);
+                } else {
+                    const newIndex = (currentTrackIndex + 1) % playlist.length;
+                    loadTrack(newIndex);
+                }
+            };
+
+            const playPrev = () => {
+                if (playlist.length === 0) return;
+                // Si la canción ha avanzado más de 3 segundos, reiníciala. Si no, ve a la anterior.
+                if (audioPlayer.currentTime > 3 && !prevClickTimeout) {
+                    audioPlayer.currentTime = 0;
+                    // Lógica de doble clic para ir atrás
+                    prevClickTimeout = setTimeout(() => { prevClickTimeout = null; }, 500);
+                    return;
+                }
+                if (prevClickTimeout) {
+                    clearTimeout(prevClickTimeout);
+                    prevClickTimeout = null;
+                }
+                // Usa el historial para volver a la canción anterior
+                if (playHistory.length > 1) {
+                    playHistory.pop(); // Quita la actual
+                    const previousTrackIndex = playHistory[playHistory.length - 1];
+                    loadTrack(previousTrackIndex, false); // No actualices el historial
+                } else {
+                    let newIndex = currentTrackIndex - 1;
+                    if (newIndex < 0) { newIndex = playlist.length - 1; }
+                    loadTrack(newIndex);
+                }
+            };
+
+            const handleTrackEnd = () => {
+                if (isRepeat) {
+                    audioPlayer.currentTime = 0;
+                    playMedia();
+                } else {
+                    playNext();
+                }
+            };
+
+            // --- MANEJADORES DE EVENTOS ---
+            playPauseButton.addEventListener('click', togglePlayPause);
+            nextButton.addEventListener('click', playNext);
+            prevButton.addEventListener('click', playPrev);
+            audioPlayer.addEventListener('ended', handleTrackEnd);
+            
+            document.addEventListener('keydown', (event) => {
+                if (event.code === 'Space' && event.target.tagName !== 'INPUT' && event.target.tagName !== 'BUTTON') {
+                    event.preventDefault();
+                    togglePlayPause();
+                }
+            });
+
+            audioPlayer.addEventListener('timeupdate', (e) => {
+                const { duration, currentTime } = e.target;
+                if (duration && !isDraggingProgress) { 
+                    progressBar.style.width = `${(currentTime / duration) * 100}%`;
+                    currentTimeEl.textContent = formatTime(currentTime);
+                }
+                 if(duration) {
+                     durationEl.textContent = formatTime(duration);
+                 }
+            });
+
+            // --- Lógica de arrastre para la barra de progreso ---
+            const updateProgress = (e) => {
+                if (currentTrackIndex === -1 || !audioPlayer.duration) return;
+                const rect = progressContainer.getBoundingClientRect();
+                const clientX = getClientX(e);
+                const clickX = clientX - rect.left;
+                const width = progressContainer.clientWidth;
+                let progress = clickX / width;
+                progress = Math.max(0, Math.min(1, progress));
+
+                progressBar.style.width = `${progress * 100}%`;
+                currentTimeEl.textContent = formatTime(progress * audioPlayer.duration);
+                if (!isDraggingProgress) {
+                    audioPlayer.currentTime = progress * audioPlayer.duration;
+                }
+            };
+
+            progressContainer.addEventListener('mousedown', (e) => {
+                isDraggingProgress = true;
+                updateProgress(e);
+            });
+            progressContainer.addEventListener('touchstart', (e) => {
+                isDraggingProgress = true;
+                updateProgress(e);
+            });
+
+            // --- Lógica de Volumen con Barra Personalizada ---
+            const updateVolumeIcon = (volume) => {
+                volumeHighIcon.classList.add('hidden');
+                volumeLowIcon.classList.add('hidden');
+                volumeMuteIcon.classList.add('hidden');
+                
+                volumeIconContainer.classList.toggle('active', volume === 0);
+
+                if (volume === 0) {
+                    volumeMuteIcon.classList.remove('hidden');
+                } else if (volume > 0.5) {
+                    volumeHighIcon.classList.remove('hidden');
+                } else {
+                    volumeLowIcon.classList.remove('hidden');
+                }
+            };
+
+            const setVolume = (volume) => {
+                volume = Math.max(0, Math.min(1, volume));
+                audioPlayer.volume = volume;
+                volumeBar.style.width = `${volume * 100}%`;
+                updateVolumeIcon(volume);
+            }
+            
+            const handleVolumeChange = (e) => {
+                const rect = volumeContainer.getBoundingClientRect();
+                const clientX = getClientX(e);
+                const clickX = clientX - rect.left;
+                const width = volumeContainer.clientWidth;
+                let newVolume = clickX / width;
+                newVolume = Math.max(0, Math.min(1, newVolume));
+                setVolume(newVolume);
+                if (newVolume > 0) { lastVolume = newVolume; }
+            };
+
+            volumeContainer.addEventListener('mousedown', (e) => {
+                isDraggingVolume = true;
+                handleVolumeChange(e);
+            });
+            volumeContainer.addEventListener('touchstart', (e) => {
+                isDraggingVolume = true;
+                handleVolumeChange(e);
+            });
+            
+            volumeIconContainer.addEventListener('click', () => {
+                const currentVolume = audioPlayer.volume;
+                if (currentVolume > 0) {
+                    lastVolume = currentVolume;
+                    setVolume(0);
+                } else {
+                    setVolume(lastVolume);
+                }
+            });
+
+            // Eventos de arrastre y finalización en todo el documento
+            document.addEventListener('mousemove', (e) => {
+                if (isDraggingProgress) { updateProgress(e); }
+                if (isDraggingVolume) { handleVolumeChange(e); }
+            });
+            document.addEventListener('touchmove', (e) => {
+                if (isDraggingProgress) { updateProgress(e); }
+                if (isDraggingVolume) { handleVolumeChange(e); }
+            });
+
+            document.addEventListener('mouseup', (e) => {
+                if (isDraggingProgress) {
+                    isDraggingProgress = false;
+                    updateProgress(e); 
+                    audioPlayer.currentTime = (parseFloat(progressBar.style.width) / 100) * audioPlayer.duration;
+                }
+                isDraggingVolume = false;
+            });
+            document.addEventListener('touchend', (e) => {
+                 if (isDraggingProgress) {
+                    isDraggingProgress = false;
+                    updateProgress(e);
+                    audioPlayer.currentTime = (parseFloat(progressBar.style.width) / 100) * audioPlayer.duration;
+                }
+                isDraggingVolume = false;
+            });
+
+            // Lógica de Repetir y Aleatorio
+            repeatButton.addEventListener('click', () => {
+                isRepeat = !isRepeat;
+                repeatButton.classList.toggle('active', isRepeat);
+            });
+            shuffleButton.addEventListener('click', () => {
+                isShuffle = !isShuffle;
+                shuffleButton.classList.toggle('active', isShuffle);
+                playHistory = currentTrackIndex !== -1 ? [currentTrackIndex] : [];
+            });
+
+            // --- LÓGICA DE CARGA DE ARCHIVOS (OPTIMIZADA) ---
+            uploadButton.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', (e) => {
+                const files = e.target.files;
+                if (files.length === 0) return;
+
+                const wasPlayerEmpty = playlist.length === 0;
+
+                // Crea promesas para leer los metadatos de cada archivo nuevo
+                const newTracksPromises = Array.from(files)
+                    .filter(file => !playlist.some(track => track.name === file.name && track.file.size === file.size)) // Evita duplicados
+                    .map(file => {
+                        return new Promise((resolve) => {
+                            const track = {
+                                file: file,
+                                url: URL.createObjectURL(file),
+                                name: file.name,
+                                type: file.type || 'unknown',
+                                title: file.name.replace(/\.[^/.]+$/, ""), // Título por defecto
+                                artist: "Artista Desconocido", // Artista por defecto
+                                picture: null
+                            };
+
+                            if (file.type.startsWith('audio/')) {
+                                window.jsmediatags.read(file, {
+                                    onSuccess: (tag) => {
+                                        track.title = tag.tags.title || track.title; // Usa el título del tag o el nombre del archivo
+                                        track.artist = tag.tags.artist || track.artist;
+                                        track.picture = tag.tags.picture;
+                                        resolve(track);
+                                    },
+                                    onError: (error) => {
+                                        console.error('Error al leer metadatos:', error);
+                                        resolve(track); // Resuelve con la info por defecto si hay error
+                                    }
+                                });
+                            } else if (file.type.startsWith('video/')) {
+                                track.artist = "Audio de Video";
+                                resolve(track);
+                            } else {
+                                resolve(track);
+                            }
+                        });
+                    });
+
+                // Cuando todas las promesas se resuelvan, añade las pistas a la playlist
+                Promise.all(newTracksPromises).then(newTracks => {
+                    playlist.push(...newTracks);
+                    updatePlaylistUI();
+                    if (wasPlayerEmpty && playlist.length > 0) {
+                        loadTrack(0);
+                    }
+                });
+
+                fileInput.value = ''; // Limpia el input para poder cargar los mismos archivos de nuevo
+            });
+            
+            // --- ACTUALIZACIÓN DE LA UI DE LA LISTA DE REPRODUCCIÓN ---
+            const updatePlaylistUI = () => {
+                playlistEl.innerHTML = '';
+                if (playlist.length === 0) {
+                     playlistEl.innerHTML = '<li class="py-1 px-2 text-gray-500">Carga archivos para ver tu lista aquí.</li>';
+                     return;
+                }
+                playlist.forEach((track, index) => {
+                    const li = document.createElement('li');
+                    li.className = 'py-1 px-2 rounded-md cursor-pointer hover:bg-white/20 transition playlist-item truncate flex items-center justify-between';
+                    
+                    const trackNameSpan = document.createElement('span');
+                    // *** MEJORA: Muestra el título de la canción en lugar del nombre del archivo ***
+                    trackNameSpan.textContent = track.title; 
+                    li.appendChild(trackNameSpan);
+
+                    // MEJORA: Añade el ícono de reproducción si la canción está sonando
+                    if (index === currentTrackIndex && isPlaying) {
+                        const playingIcon = document.createElement('div');
+                        playingIcon.className = 'flex items-center space-x-px';
+                        for (let i = 0; i < 4; i++) {
+                            const bar = document.createElement('span');
+                            bar.className = 'playing-icon-bar';
+                            playingIcon.appendChild(bar);
+                        }
+                        li.appendChild(playingIcon);
+                    }
+
+                    if (index === currentTrackIndex) { 
+                        li.classList.add('active'); 
+                    }
+                    li.dataset.index = index;
+                    li.addEventListener('click', () => { 
+                        if (currentTrackIndex === index) {
+                            togglePlayPause();
+                        } else {
+                            loadTrack(index);
+                        }
+                    });
+                    playlistEl.appendChild(li);
+                });
+                const activeItem = playlistEl.querySelector('.active');
+                if (activeItem) {
+                    activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            };
+            
+            const handleResponsiveLayout = () => {
+                if (window.innerWidth < 768) { // md breakpoint in Tailwind
+                    // Mueve el botón de carga a la columna derecha en móviles
+                    if (uploadWrapper.parentElement !== rightColumn) { rightColumn.appendChild(uploadWrapper); }
+                } else {
+                    // Mueve el botón de carga a la columna izquierda en escritorio
+                    if (uploadWrapper.parentElement !== leftColumn) { leftColumn.appendChild(uploadWrapper); }
+                }
+                if (currentTrackIndex !== -1) { adjustTitleFontSize(); }
+            };
+
+            window.addEventListener('resize', handleResponsiveLayout);
+
+            // --- INICIALIZACIÓN ---
+            setVolume(1);
+            handleResponsiveLayout();
+            updateDynamicColors(); 
+        });
+    </script>
+
+</body>
+</html>
